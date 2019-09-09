@@ -120,6 +120,7 @@ public class ReentrantLock implements Lock, java.io.Serializable {
          * Performs {@link Lock#lock}. The main reason for subclassing
          * is to allow fast path for nonfair version.
          */
+        //模板方法
         abstract void lock();
 
         /**
@@ -129,12 +130,17 @@ public class ReentrantLock implements Lock, java.io.Serializable {
         final boolean nonfairTryAcquire(int acquires) {
             final Thread current = Thread.currentThread();
             int c = getState();
+            //当前线程的锁状态如果是0，说明当前线程不拥有锁
             if (c == 0) {
+                //cas竞争锁(将同步状态设置成acquires)
+                //c=n，说明有n次重入
                 if (compareAndSetState(0, acquires)) {
+                    //竞争成功，将当前线程设置成拥有锁线程
                     setExclusiveOwnerThread(current);
                     return true;
                 }
             }
+            //如果当前线程已经用有锁
             else if (current == getExclusiveOwnerThread()) {
                 int nextc = c + acquires;
                 if (nextc < 0) // overflow
@@ -203,12 +209,16 @@ public class ReentrantLock implements Lock, java.io.Serializable {
          * acquire on failure.
          */
         final void lock() {
+            //利用cas获取锁
             if (compareAndSetState(0, 1))
+                //获取成功，设置当前线程为锁拥有线程
                 setExclusiveOwnerThread(Thread.currentThread());
             else
+                //失败，加入到等待队列
                 acquire(1);
         }
 
+        //按照非公平的方式，试着获取下锁
         protected final boolean tryAcquire(int acquires) {
             return nonfairTryAcquire(acquires);
         }
@@ -232,6 +242,8 @@ public class ReentrantLock implements Lock, java.io.Serializable {
             final Thread current = Thread.currentThread();
             int c = getState();
             if (c == 0) {
+                //hasQueuedPredecessors这个方法是和非公平方式不同的,保证了公平性
+                //判断等待队列有无需要处理的节点
                 if (!hasQueuedPredecessors() &&
                     compareAndSetState(0, acquires)) {
                     setExclusiveOwnerThread(current);
@@ -253,6 +265,7 @@ public class ReentrantLock implements Lock, java.io.Serializable {
      * Creates an instance of {@code ReentrantLock}.
      * This is equivalent to using {@code ReentrantLock(false)}.
      */
+    //默认是按照非公平的方式
     public ReentrantLock() {
         sync = new NonfairSync();
     }

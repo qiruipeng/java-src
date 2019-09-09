@@ -353,5 +353,6 @@ public interface Lock {
      * @throws UnsupportedOperationException if this {@code Lock}
      *         implementation does not support conditions
      */
+    //类似object中的监视器方法，与lock一起实现通知/等待模型
     Condition newCondition();
 }

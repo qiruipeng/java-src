@@ -286,6 +286,7 @@ import sun.misc.Unsafe;
  * @since 1.5
  * @author Doug Lea
  */
+//队列同步器
 public abstract class AbstractQueuedSynchronizer
     extends AbstractOwnableSynchronizer
     implements java.io.Serializable {
@@ -379,8 +380,10 @@ public abstract class AbstractQueuedSynchronizer
      */
     static final class Node {
         /** Marker to indicate a node is waiting in shared mode */
+        //共享式
         static final Node SHARED = new Node();
         /** Marker to indicate a node is waiting in exclusive mode */
+        //独占式
         static final Node EXCLUSIVE = null;
 
         /** waitStatus value to indicate thread has cancelled */
@@ -530,6 +533,8 @@ public abstract class AbstractQueuedSynchronizer
     /**
      * The synchronization state.
      */
+    //同步状态
+    //volatile保证线程间的可见性
     private volatile int state;
 
     /**
@@ -583,10 +588,14 @@ public abstract class AbstractQueuedSynchronizer
     private Node enq(final Node node) {
         for (;;) {
             Node t = tail;
+            //头结点为空
             if (t == null) { // Must initialize
+                //等待队列初始化
+                //cas的方式设置node节点为头结点
                 if (compareAndSetHead(new Node()))
                     tail = head;
             } else {
+                //cas添加node节点到队尾
                 node.prev = t;
                 if (compareAndSetTail(t, node)) {
                     t.next = node;
@@ -603,16 +612,20 @@ public abstract class AbstractQueuedSynchronizer
      * @return the new node
      */
     private Node addWaiter(Node mode) {
+        //按照mode的方式，新建一个节点
         Node node = new Node(Thread.currentThread(), mode);
         // Try the fast path of enq; backup to full enq on failure
         Node pred = tail;
+        //如果队尾不为空，说明等待队列不为空
         if (pred != null) {
             node.prev = pred;
+            //cas方式，加入到队尾
             if (compareAndSetTail(pred, node)) {
                 pred.next = node;
                 return node;
             }
         }
+        //等待队列为空，死循环的方式构建等待队列
         enq(node);
         return node;
     }
@@ -854,13 +867,17 @@ public abstract class AbstractQueuedSynchronizer
      * @param arg the acquire argument
      * @return {@code true} if interrupted while waiting
      */
+    //自旋获取锁
     final boolean acquireQueued(final Node node, int arg) {
         boolean failed = true;
         try {
             boolean interrupted = false;
             for (;;) {
+                //获取node节点的前驱节点
                 final Node p = node.predecessor();
+                //如果前驱节点是头结点，并且当前线程拥有锁
                 if (p == head && tryAcquire(arg)) {
+                    //将当前节点设置成头结点
                     setHead(node);
                     p.next = null; // help GC
                     failed = false;
@@ -1194,6 +1211,9 @@ public abstract class AbstractQueuedSynchronizer
      *        {@link #tryAcquire} but is otherwise uninterpreted and
      *        can represent anything you like.
      */
+    //1、如果没有获取到锁
+    //2、将当前线程加入到等待队列
+    //3、
     public final void acquire(int arg) {
         if (!tryAcquire(arg) &&
             acquireQueued(addWaiter(Node.EXCLUSIVE), arg))
@@ -1278,6 +1298,7 @@ public abstract class AbstractQueuedSynchronizer
      *        {@link #tryAcquireShared} but is otherwise uninterpreted
      *        and can represent anything you like.
      */
+    //共享式获取同步状态
     public final void acquireShared(int arg) {
         if (tryAcquireShared(arg) < 0)
             doAcquireShared(arg);
@@ -1509,6 +1530,10 @@ public abstract class AbstractQueuedSynchronizer
      *         is at the head of the queue or the queue is empty
      * @since 1.7
      */
+    //判断等待队列还有无需要处理的节点，只有结果为false，才有获取到锁的可能
+    //1、如果tail=head，说明等待队列没其他线程，直接cas获取头结点锁状态
+    //2、(s = h.next) == null,说明只有头结点，和头结点cas竞态获取
+    //3、s.thread != Thread.currentThread(),说明
     public final boolean hasQueuedPredecessors() {
         // The correctness of this depends on head being initialized
         // before tail and on head.next being accurate if the current
@@ -1516,6 +1541,9 @@ public abstract class AbstractQueuedSynchronizer
         Node t = tail; // Read fields in reverse initialization order
         Node h = head;
         Node s;
+        //头结点不等于尾节点，说明等待队列不为空
+        //头结点的下一个节点不为空
+        //下一个节点的线程不是当前线程
         return h != t &&
             ((s = h.next) == null || s.thread != Thread.currentThread());
     }

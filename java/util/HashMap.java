@@ -412,6 +412,8 @@ public class HashMap<K,V> extends AbstractMap<K,V>
      * rehash).  This field is used to make iterators on Collection-views of
      * the HashMap fail-fast.  (See ConcurrentModificationException).
      */
+    //修改次数
+    //只能是同一线程操作对结构的改变，会抛出异常--fail-fast机制
     transient int modCount;
 
     /**
@@ -423,6 +425,7 @@ public class HashMap<K,V> extends AbstractMap<K,V>
     // Additionally, if the table array has not been allocated, this
     // field holds the initial array capacity, or zero signifying
     // DEFAULT_INITIAL_CAPACITY.)
+    //阈值：判断是否扩容；capacity*loadFactor
     int threshold;
 
     /**
@@ -430,6 +433,7 @@ public class HashMap<K,V> extends AbstractMap<K,V>
      *
      * @serial
      */
+    //加载因子
     final float loadFactor;
 
     /* ---------------- Public operations -------------- */
@@ -646,6 +650,7 @@ public class HashMap<K,V> extends AbstractMap<K,V>
             else {
                 for (int binCount = 0; ; ++binCount) {
                     if ((e = p.next) == null) {
+                        //下面的才是每次新增节点操作
                         p.next = newNode(hash, key, value, null);
                         if (binCount >= TREEIFY_THRESHOLD - 1) // -1 for 1st
                             //如果此时链表的长度是7，也就是插入后就是8了，所以将链表转化成红黑树
@@ -683,6 +688,7 @@ public class HashMap<K,V> extends AbstractMap<K,V>
      *
      * @return the table
      */
+    //两个作用：1、初始化链表数组，2、扩容
     final Node<K,V>[] resize() {
         Node<K,V>[] oldTab = table;
         int oldCap = (oldTab == null) ? 0 : oldTab.length;
@@ -695,14 +701,17 @@ public class HashMap<K,V> extends AbstractMap<K,V>
             }
             else if ((newCap = oldCap << 1) < MAXIMUM_CAPACITY &&
                      oldCap >= DEFAULT_INITIAL_CAPACITY)
+                //<< 1 相当于乘以2
                 newThr = oldThr << 1; // double threshold
         }
         else if (oldThr > 0) // initial capacity was placed in threshold
             newCap = oldThr;
         else {               // zero initial threshold signifies using defaults
+            //初始化
             newCap = DEFAULT_INITIAL_CAPACITY;
             newThr = (int)(DEFAULT_LOAD_FACTOR * DEFAULT_INITIAL_CAPACITY);
         }
+        //初始化
         if (newThr == 0) {
             float ft = (float)newCap * loadFactor;
             newThr = (newCap < MAXIMUM_CAPACITY && ft < (float)MAXIMUM_CAPACITY ?
@@ -718,6 +727,7 @@ public class HashMap<K,V> extends AbstractMap<K,V>
                 if ((e = oldTab[j]) != null) {
                     oldTab[j] = null;
                     if (e.next == null)
+                        //重新定位桶的位置，然后将老的位置放入
                         newTab[e.hash & (newCap - 1)] = e;
                     else if (e instanceof TreeNode)
                         ((TreeNode<K,V>)e).split(this, newTab, j, oldCap);
@@ -1345,6 +1355,8 @@ public class HashMap<K,V> extends AbstractMap<K,V>
 
     // These methods are also used when serializing HashSets
     final float loadFactor() { return loadFactor; }
+    //链表数组不为空，容量是数组的长度，否则就是阈值
+    //注意：该方法是final修饰的
     final int capacity() {
         return (table != null) ? table.length :
             (threshold > 0) ? threshold :

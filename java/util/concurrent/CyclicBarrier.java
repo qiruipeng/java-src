@@ -157,6 +157,8 @@ public class CyclicBarrier {
     /** Condition to wait on until tripped */
     private final Condition trip = lock.newCondition();
     /** The number of parties */
+    //派对数量
+    //当他的值不为0，就阻塞新进的线程
     private final int parties;
     /* The command to run when tripped */
     private final Runnable barrierCommand;

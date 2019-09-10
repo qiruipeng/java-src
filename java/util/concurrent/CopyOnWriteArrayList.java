@@ -392,6 +392,7 @@ public class CopyOnWriteArrayList<E>
      *
      * @throws IndexOutOfBoundsException {@inheritDoc}
      */
+    //直接获取，无锁操作，但不能读取到正在加锁写的数据
     public E get(int index) {
         return get(getArray(), index);
     }
@@ -430,6 +431,8 @@ public class CopyOnWriteArrayList<E>
      * @param e element to be appended to this list
      * @return {@code true} (as specified by {@link Collection#add})
      */
+    //加锁新增，新开辟数组添加元素
+    //导致读写会有一定的延迟，因此适用场景是读多于写的
     public boolean add(E e) {
         final ReentrantLock lock = this.lock;
         lock.lock();
@@ -608,6 +611,7 @@ public class CopyOnWriteArrayList<E>
      * @param e element to be added to this list, if absent
      * @return {@code true} if the element was added
      */
+    //先判断新增元素的位置如果不存在返回-1
     public boolean addIfAbsent(E e) {
         Object[] snapshot = getArray();
         return indexOf(e, snapshot, 0, snapshot.length) >= 0 ? false :
@@ -618,6 +622,7 @@ public class CopyOnWriteArrayList<E>
      * A version of addIfAbsent using the strong hint that given
      * recent snapshot does not contain e.
      */
+    //该方法和add不同点就是需要判断新增元素，是否在数组中存在
     private boolean addIfAbsent(E e, Object[] snapshot) {
         final ReentrantLock lock = this.lock;
         lock.lock();
@@ -630,10 +635,12 @@ public class CopyOnWriteArrayList<E>
                 for (int i = 0; i < common; i++)
                     if (current[i] != snapshot[i] && eq(e, current[i]))
                         return false;
+                //是否已经存在
                 if (indexOf(e, current, common, len) >= 0)
                         return false;
             }
             Object[] newElements = Arrays.copyOf(current, len + 1);
+            //将元素添加到末尾
             newElements[len] = e;
             setArray(newElements);
             return true;

@@ -298,6 +298,8 @@ class Thread implements Runnable {
      *          <i>interrupted status</i> of the current thread is
      *          cleared when this exception is thrown.
      */
+    //与wait/notify不同的是sleep并不会释放锁，在sleep操作后直接有cpu调度
+    //其行为属于当前线程私有行为，因此sleep在Thread中
     public static native void sleep(long millis) throws InterruptedException;
 
     /**

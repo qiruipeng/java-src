@@ -379,6 +379,9 @@ public class Object {
      * @see        java.lang.Object#notify()
      * @see        java.lang.Object#notifyAll()
      */
+    //native原生方法，也就是操作系统方法，具体由c/c++与操作系统交互
+    //阻塞当前线程，进入等待队列，等待其他线程notify/notifyAll唤醒
+    //object属于java的顶级类，任何线程都是object的子类，因此将wait、notify放在顶级类中最好
     public final native void wait(long timeout) throws InterruptedException;
 
     /**

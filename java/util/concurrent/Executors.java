@@ -85,6 +85,8 @@ public class Executors {
      * @return the newly created thread pool
      * @throws IllegalArgumentException if {@code nThreads <= 0}
      */
+    //可以创建固定带下的线程池,默认线程工厂
+    //使用LinkedBlockingQueue无界队列，说明最大线程参数无效
     public static ExecutorService newFixedThreadPool(int nThreads) {
         return new ThreadPoolExecutor(nThreads, nThreads,
                                       0L, TimeUnit.MILLISECONDS,
@@ -167,6 +169,7 @@ public class Executors {
      *
      * @return the newly created single-threaded Executor
      */
+    //核心线程数量为1，大于的线程全部放到阻塞队列，采用无界队列
     public static ExecutorService newSingleThreadExecutor() {
         return new FinalizableDelegatedExecutorService
             (new ThreadPoolExecutor(1, 1,
@@ -212,6 +215,7 @@ public class Executors {
      *
      * @return the newly created thread pool
      */
+    //创建一个伸缩的线程池，体现在最大线程池的数量上，SynchronousQueue不存储元素
     public static ExecutorService newCachedThreadPool() {
         return new ThreadPoolExecutor(0, Integer.MAX_VALUE,
                                       60L, TimeUnit.SECONDS,

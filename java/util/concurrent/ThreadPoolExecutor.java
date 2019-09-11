@@ -379,15 +379,26 @@ public class ThreadPoolExecutor extends AbstractExecutorService {
     private static final int CAPACITY   = (1 << COUNT_BITS) - 1;
 
     // runState is stored in the high-order bits
+    //运行状态,此时，能接受新提交的任务, 并且也能处理阻塞队列中的任务
     private static final int RUNNING    = -1 << COUNT_BITS;
+    //关闭状态，不再接受新提交的任务, 但却可以继续处理阻塞队列中已保存的任务.
+    //在线程池处于 RUNNING 状态时, 调用 shutdown()方法会使线程池进入到该状态. 当然, finalize() 方法在执行过程中或许也会隐式地进入该状态.
     private static final int SHUTDOWN   =  0 << COUNT_BITS;
+    //不能接受新提交的任务, 也不能处理阻塞队列中已保存的任务, 并且会中断正在处理中的任务.
+    //在线程池处于 RUNNING 或 SHUTDOWN 状态时, 调用 shutdownNow() 方法会使线程池进入到该状态.
     private static final int STOP       =  1 << COUNT_BITS;
+    //所有的任务都已终止了, workerCount (有效线程数) 为0, 线程池进入该状态后会调用 terminated() 方法以让该线程池进入TERMINATED 状态.
+    //当线程池处于 SHUTDOWN 状态时, 如果此后线程池内没有线程了并且阻塞队列内也没有待执行的任务了 (即: 二者都为空), 线程池就会进入到该状态.
+    //当线程池处于 STOP 状态时, 如果此后线程池内没有线程了, 线程池就会进入到该状态.
     private static final int TIDYING    =  2 << COUNT_BITS;
+    //terminated() 方法执行完后就进入该状态
     private static final int TERMINATED =  3 << COUNT_BITS;
 
     // Packing and unpacking ctl
     private static int runStateOf(int c)     { return c & ~CAPACITY; }
     private static int workerCountOf(int c)  { return c & CAPACITY; }
+    // rs: 表示线程池的运行状态 (rs 是 runState中各单词首字母的简写组合)
+    // wc: 表示线程池内有效线程的数量 (wc 是 workerCount中各单词首字母的简写组合)
     private static int ctlOf(int rs, int wc) { return rs | wc; }
 
     /*
@@ -518,6 +529,8 @@ public class ThreadPoolExecutor extends AbstractExecutorService {
      * present or if allowCoreThreadTimeOut. Otherwise they wait
      * forever for new work.
      */
+    //线程池中线程数量大于corePoolSize（核心线程数量）或设置了allowCoreThreadTimeOut（是否允许空闲核心线程超时）时，线程会根据keepAliveTime的值进行活性检查，一旦超时便销毁线程
+    //说明核心线程和阻塞队列都满了，max线程直接创建的，这个线程带时效性
     private volatile long keepAliveTime;
 
     /**
@@ -1052,6 +1065,8 @@ public class ThreadPoolExecutor extends AbstractExecutorService {
             int wc = workerCountOf(c);
 
             // Are workers subject to culling?
+            //allowCoreThreadTimeOut默认false
+            //也就是timed = (wc > corePoolSize),如果工作线程>corePoolSize为true
             boolean timed = allowCoreThreadTimeOut || wc > corePoolSize;
 
             if ((wc > maximumPoolSize || (timed && timedOut))
@@ -1062,6 +1077,10 @@ public class ThreadPoolExecutor extends AbstractExecutorService {
             }
 
             try {
+                //如果timed=true，r=workQueue.poll(keepAliveTime, TimeUnit.NANOSECONDS)
+                //如果timed=false，r=workQueue.take()
+                //poll和take都是移除元素操作，poll如果头部元素为空返回null，而take为空则阻塞
+                //队列都是FIFO，头部删除，尾部插入,poll(time,unit)就是等待time时间后移除头部元素，没有返回null
                 Runnable r = timed ?
                     workQueue.poll(keepAliveTime, TimeUnit.NANOSECONDS) :
                     workQueue.take();
@@ -1353,11 +1372,13 @@ public class ThreadPoolExecutor extends AbstractExecutorService {
          * and so reject the task.
          */
         int c = ctl.get();
+        //工作线程小于核心线程数，加入到工作线程
         if (workerCountOf(c) < corePoolSize) {
             if (addWorker(command, true))
                 return;
             c = ctl.get();
         }
+        //试着入阻塞队列
         if (isRunning(c) && workQueue.offer(command)) {
             int recheck = ctl.get();
             if (! isRunning(recheck) && remove(command))
@@ -2004,6 +2025,7 @@ public class ThreadPoolExecutor extends AbstractExecutorService {
      * unless the executor has been shut down, in which case the task
      * is discarded.
      */
+    //如果执行程序关闭，就丢弃当前的线程
     public static class CallerRunsPolicy implements RejectedExecutionHandler {
         /**
          * Creates a {@code CallerRunsPolicy}.
@@ -2028,6 +2050,7 @@ public class ThreadPoolExecutor extends AbstractExecutorService {
      * A handler for rejected tasks that throws a
      * {@code RejectedExecutionException}.
      */
+    //抛出一个异常,默认
     public static class AbortPolicy implements RejectedExecutionHandler {
         /**
          * Creates an {@code AbortPolicy}.
@@ -2052,6 +2075,7 @@ public class ThreadPoolExecutor extends AbstractExecutorService {
      * A handler for rejected tasks that silently discards the
      * rejected task.
      */
+    //不做任何事情,意味着当前的线程被丢弃
     public static class DiscardPolicy implements RejectedExecutionHandler {
         /**
          * Creates a {@code DiscardPolicy}.
@@ -2073,6 +2097,7 @@ public class ThreadPoolExecutor extends AbstractExecutorService {
      * request and then retries {@code execute}, unless the executor
      * is shut down, in which case the task is discarded.
      */
+    //出队，然后执行
     public static class DiscardOldestPolicy implements RejectedExecutionHandler {
         /**
          * Creates a {@code DiscardOldestPolicy} for the given executor.
